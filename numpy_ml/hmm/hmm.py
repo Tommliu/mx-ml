@@ -279,6 +279,7 @@ class MultinomialHMM:
         best_path = best_path[::-1]
         return best_path, best_path_log_prob
 
+    #@profile
     def _forward(self, Obs):
         """
         Computes the forward probability trellis for an HMM parameterized by
@@ -340,6 +341,7 @@ class MultinomialHMM:
                 )
         return forward
 
+    #@profile
     def _backward(self, Obs):
         """
         Compute the backward probability trellis for an HMM parameterized by
@@ -399,7 +401,8 @@ class MultinomialHMM:
                     ]
                 )
         return backward
-
+    
+    #@profile
     def fit(
         self, O, latent_state_types, observation_types, pi=None, tol=1e-5, verbose=False
     ):
@@ -491,6 +494,7 @@ class MultinomialHMM:
 
         return self.A, self.B, self.pi
 
+    #@profile
     def _Estep(self):
         """
         Run a single E-step update for the Baum-Welch/Forward-Backward
@@ -562,6 +566,7 @@ class MultinomialHMM:
 
         return gamma, xi, phi
 
+    #@profile
     def _Mstep(self, gamma, xi, phi):
         """
         Run a single M-step update for the Baum-Welch/Forward-Backward
@@ -622,8 +627,8 @@ class MultinomialHMM:
                     count_xi[:, si, :]
                 )
 
-            np.testing.assert_almost_equal(np.exp(A[si, :]).sum(), 1)
-            np.testing.assert_almost_equal(np.exp(B[si, :]).sum(), 1)
+            #np.testing.assert_almost_equal(np.exp(A[si, :]).sum(), 1)
+            #np.testing.assert_almost_equal(np.exp(B[si, :]).sum(), 1)
         return np.exp(A), np.exp(B), np.exp(pi)
 
 
@@ -631,7 +636,7 @@ class MultinomialHMM:
 #                                Utils                                #
 #######################################################################
 
-
+#@profile
 def logsumexp(log_probs, axis=None):
     """
     Redefine scipy.special.logsumexp

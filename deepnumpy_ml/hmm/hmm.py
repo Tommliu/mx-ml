@@ -42,7 +42,7 @@ class MultinomialHMM:
         T : int
             The number of observations in each sequence in `O`.
         """
-        self.eps = 2.220446049250313e-16 #np.finfo(float).eps if eps is None else eps
+        self.eps = np.finfo(float).eps if eps is None else eps
 
         # transition matrix
         self.A = A
@@ -283,6 +283,7 @@ class MultinomialHMM:
         best_path = best_path[::-1]
         return best_path, best_path_log_prob
 
+    #@profile
     def _forward(self, Obs):
         """
         Computes the forward probability trellis for an HMM parameterized by
@@ -329,12 +330,13 @@ class MultinomialHMM:
 
         ot = Obs[0]
         for s in range(self.N):
-            forward[s, 0] = np.log(self.pi[s] + eps) + np.log(self.B[s, ot] + eps)
+            forward_tmp = np.log(self.pi[s] + eps) + np.log(self.B[s, ot] + eps)
+            forward[s, 0] = forward_tmp
 
         for t in range(1, T):
             ot = Obs[t]
             for s in range(self.N):
-                forward[s, t] = logsumexp(
+                tmp = np.array(
                     [
                         forward[s_, t - 1]
                         + np.log(self.A[s_, s] + eps)
@@ -342,8 +344,10 @@ class MultinomialHMM:
                         for s_ in range(self.N)
                     ]
                 )
+                forward[s, t] = logsumexp(tmp)
         return forward
 
+    #@profile
     def _backward(self, Obs):
         """
         Compute the backward probability trellis for an HMM parameterized by
@@ -394,7 +398,7 @@ class MultinomialHMM:
         for t in reversed(range(T - 1)):
             ot1 = Obs[t + 1]
             for s in range(self.N):
-                backward[s, t] = logsumexp(
+                tmp = np.array(
                     [
                         np.log(self.A[s, s_] + eps)
                         + np.log(self.B[s_, ot1] + eps)
@@ -402,8 +406,10 @@ class MultinomialHMM:
                         for s_ in range(self.N)
                     ]
                 )
+                backward[s, t] = logsumexp(tmp)
         return backward
 
+    #@profile
     def fit(
         self, O, latent_state_types, observation_types, pi=None, tol=1e-5, verbose=False
     ):
@@ -484,17 +490,19 @@ class MultinomialHMM:
         while delta > tol:
             gamma, xi, phi = self._Estep()
             self.A, self.B, self.pi = self._Mstep(gamma, xi, phi)
-            ll = np.sum(np.array([self.log_likelihood(o) for o in self.O]))
+            tmp = np.array([self.log_likelihood(o) for o in self.O])
+            ll = np.sum(tmp)
             delta = ll - ll_prev
             ll_prev = ll
             step += 1
 
             if verbose:
                 fstr = "[Epoch {}] LL: {:.3f} Delta: {:.5f}"
-                print(fstr.format(step, ll_prev, delta))
+                print(fstr.format(step, float(ll_prev), float(delta)))
 
         return self.A, self.B, self.pi
 
+    #@profile
     def _Estep(self):
         """
         Run a single E-step update for the Baum-Welch/Forward-Backward
@@ -566,6 +574,7 @@ class MultinomialHMM:
 
         return gamma, xi, phi
 
+    #@profile
     def _Mstep(self, gamma, xi, phi):
         """
         Run a single M-step update for the Baum-Welch/Forward-Backward
@@ -608,13 +617,14 @@ class MultinomialHMM:
                         #  count_gamma[i, si, vk] = -np.inf
                         count_gamma[i, si, vk] = np.log(eps)
                     else:
-                        count_gamma[i, si, vk] = logsumexp(gamma[i, si, Obs == vk])
+                        tmp = logsumexp(gamma[i, si, Obs == vk])
+                        count_gamma[i, si, vk] = tmp
 
                 for sj in range(self.N):
                     count_xi[i, si, sj] = logsumexp(xi[i, si, sj, :])
 
         pi = logsumexp(phi, axis=0) - np.log(self.I + eps)
-        np.testing.assert_almost_equal(np.exp(pi).sum(), 1)
+        #np.testing.assert_almost_equal(np.exp(pi).sum(), 1)
 
         for si in range(self.N):
             for vk in range(self.V):
@@ -627,8 +637,8 @@ class MultinomialHMM:
                     count_xi[:, si, :]
                 )
 
-            np.testing.assert_almost_equal(np.exp(A[si, :]).sum(), 1)
-            np.testing.assert_almost_equal(np.exp(B[si, :]).sum(), 1)
+            #np.testing.assert_almost_equal(np.exp(A[si, :]).sum(), 1)
+            #np.testing.assert_almost_equal(np.exp(B[si, :]).sum(), 1)
         return np.exp(A), np.exp(B), np.exp(pi)
 
 
@@ -636,17 +646,14 @@ class MultinomialHMM:
 #                                Utils                                #
 #######################################################################
 
-
+#@profile
 def logsumexp(log_probs, axis=None):
     """
     Redefine scipy.special.logsumexp
     see: http://bayesjumping.net/log-sum-exp-trick/
     """
-    # print("\nlogsumexp")
-    # print("log_probs",type(log_probs),log_probs.shape,log_probs)
     _max = np.max(log_probs)
-    # print("_max",type(_max),_max.shape,_max)
     ds = log_probs - _max
     exp_sum = np.exp(ds).sum(axis=axis)
-    # print("exp_sum",type(exp_sum),exp_sum.shape,exp_sum)
-    return float(_max + np.log(exp_sum))
+    return _max + np.log(exp_sum)
+    
