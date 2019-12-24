@@ -56,11 +56,11 @@ def test_hmm(op_type, trails, states, observations, _emissions, test_emission):
     print(trails, "trails:", op_type, "in dataset of shape", _emissions.shape, "consumed: ", time_end - time_start, " seconds")
     print("Loglikekihood: ", test_log_p)
     print("Probability: ", np.exp(test_log_p))
-    return np.exp(log_p)
+    return np.exp(test_log_p)
 
 #op_types = ['Official Numpy', 'DeepNumPy CPU', 'DeepNumPy GPU']
-op_types = ['DeepNumPy GPU'] 
-trails = 3
+op_types = ['Official Numpy'] 
+trails = 1
 N = 200
 L = 10
 #HMM_Generate(N, L)

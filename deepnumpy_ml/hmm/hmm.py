@@ -268,8 +268,8 @@ class MultinomialHMM:
                     for s_ in range(self.N)
                 ]
 
-                viterbi[s, t] = np.max(seq_probs)
-                back_pointer[s, t] = np.argmax(seq_probs)
+                viterbi[s, t] = np.max(np.array(seq_probs))
+                back_pointer[s, t] = np.argmax(np.array(seq_probs))
 
         best_path_log_prob = viterbi[:, T - 1].max()
 
